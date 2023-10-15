@@ -1,6 +1,6 @@
 from math import log2, inf
 import numpy as np
-from random import choice
+from random import choice, shuffle
 import time
 
 
@@ -60,16 +60,18 @@ class WordleSolver:
         number = self.triadic_to_number(color)
         possible_answers = self.get_possible_answers(word, number)
         self.possible_answers = possible_answers
+        if len(self.possible_answers) == 1:
+            return self.possible_answers
         if entropy_value == 0:
             result = None
             min_ent = inf
-            for word in self.all_words:
+            for word in self.optimized_words:
                 cond_e = self.cond_entropy(word)
                 if cond_e < min_ent:
                     result = (word, cond_e)
                     min_ent = cond_e
         else:
-            for word in self.all_words:
+            for word in self.optimized_words:
                 cond_e = self.cond_entropy(word)
                 if cond_e < entropy_value:
                     result = (word, cond_e)
@@ -103,7 +105,13 @@ class WordleSolver:
             if not len(set(w)) == 5:
                 continue
             optimized_words.append(w)
+        optimized_words = self.get_repr_sample(optimized_words)
         return optimized_words
+
+    def get_repr_sample(self, words):
+        size = int(len(words) * 0.5)
+        shuffle(words)
+        return words[:size]
 
     def get_first_word(self, entropy_value=0):
         self.possible_answers = self.answers
@@ -164,9 +172,10 @@ class WordleSolver:
                 next_word, self.triadic_to_number(color)
             )
             attempt = 2
-            while attempt < 7:
+            while attempt <= 5:
                 attempt += 1
                 if len(self.possible_answers) == 1:
+                    attempt += 1
                     print(f"{self.possible_answers[0]} is the answer!")
                     break
                 next_word = self.next_word(next_word, color)[0]
@@ -189,40 +198,36 @@ class WordleSolver:
             )
         return color
 
-    def test(self, n, answer=None):
+    def test(self, n=1, answer=None):
         if answer is None:
-            random_choice = True
-        else:
-            n = 1
-            random_choice = False
-        for i in range(n):
-            if random_choice:
+            for i in range(n):
                 answer = choice(self.answers)
-            print("answer: ", answer)
-            first_word = self.get_first_word()[0]
-            print(first_word)
-            self.possible_answers = self.get_possible_answers(
-                first_word, self.wordle_eval_num(first_word, answer)
-            )
-            next_word = self.load_second_words()[
-                self.wordle_eval_num(first_word, answer)
-            ][0]
-            attempt = 2
-            success = False
+                self.get_answer(answer)
+        else:
+            self.get_answer(answer)
+
+    def get_answer(self, answer):
+        attempt = 0
+        print("answer: ", answer)
+        first_word = self.get_first_word()[0]
+        print(first_word)
+        eval_num = self.wordle_eval_num(first_word, answer)
+        attempt += 1
+        if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
+            print(self.possible_answers[0], answer, attempt)
+            return True
+        self.possible_answers = self.get_possible_answers(first_word, eval_num)
+        next_word = self.load_second_words()[eval_num][0]
+        while attempt < 7:
             print(next_word)
-            while attempt <= 7:
-                attempt += 1
-                next_word = self.next_word(
-                    next_word,
-                    self.number_to_triadic(self.wordle_eval_num(next_word, answer)),
-                )[0]
-                print(next_word)
-                if len(self.possible_answers) == 1:
-                    print(self.possible_answers[0], answer, attempt)
-                    success = True
-                    break
-            if not success:
-                print(answer, attempt, self.possible_answers)
+            attempt += 1
+            eval_num = self.wordle_eval_num(next_word, answer)
+            if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
+                print(self.possible_answers[0], answer, attempt)
+                return True
+            next_word = self.next_word(next_word, self.number_to_triadic(eval_num))[0]
+        print(answer, attempt, self.possible_answers)
+        return False
 
 
 if __name__ == "__main__":
