@@ -1,8 +1,7 @@
 from math import log2, inf
-from random import choice, shuffle
+from random import choice
 import time
-import numpy as np
-from collections import defaultdict
+import itertools
 
 
 class WordleSolver:
@@ -10,13 +9,13 @@ class WordleSolver:
         self.possible_answers = self._load_words("words.txt")
         self.all_words = self.possible_answers.copy()
         self.optimized_words = self.optimize_words(self.all_words)
-        self.answers = self._load_words("answers.txt")
+        self.answers = list(self._load_words("answers.txt"))
         self.word_length = word_length
         self.number_of_colors = 3**self.word_length
 
     def _load_words(self, file):
         with open(file, "r", encoding="utf-8") as f:
-            words = [line.strip() for line in f.readlines()]
+            words = {line.strip() for line in f.readlines()}
         return words
 
     def number_to_triadic(self, num, siz=None):
@@ -64,42 +63,41 @@ class WordleSolver:
         possible_answers = self.get_possible_answers(word, number)
         self.possible_answers = possible_answers
         if len(self.possible_answers) == 1:
-            return self.possible_answers
-
-        in_possible_answers = []
-        not_in_possible_answers = []
+            return (list(self.possible_answers)[0], 0)
+        in_possible_answers = set()
+        not_in_possible_answers = set()
         min_ent = inf
         for word in self.optimized_words:
             cond_e = self.cond_entropy(word)
             if cond_e == min_ent:
                 if word in self.possible_answers:
-                    in_possible_answers.append((word, cond_e))
+                    in_possible_answers.add((word, cond_e))
                 else:
-                    not_in_possible_answers.append((word, cond_e))
+                    not_in_possible_answers.add((word, cond_e))
             elif cond_e < min_ent:
-                in_possible_answers = []
-                not_in_possible_answers = []
+                in_possible_answers = set()
+                not_in_possible_answers = set()
                 min_ent = cond_e
                 if word in self.possible_answers:
-                    in_possible_answers.append((word, cond_e))
+                    in_possible_answers.add((word, cond_e))
                 else:
-                    not_in_possible_answers.append((word, cond_e))
+                    not_in_possible_answers.add((word, cond_e))
 
         if in_possible_answers:
-            result = choice(in_possible_answers)
+            result = choice(list(in_possible_answers))
         else:
-            result = choice(not_in_possible_answers)
+            result = choice(list(not_in_possible_answers))
         return result
 
     def get_possible_answers(self, word, number):
-        possible_answers = []
+        possible_answers = set()
         for possible_answer in self.possible_answers:
             if self.wordle_eval_num(word, possible_answer) == number:
-                possible_answers.append(possible_answer)
+                possible_answers.add(possible_answer)
         return possible_answers
 
     def optimize_words_for_first(self, words):
-        optimized_words = []
+        optimized_words = set()
         for w in words:
             w_set = set(w)
             if not len(w_set) == 5:
@@ -110,22 +108,21 @@ class WordleSolver:
                 continue
             if "o" not in w_set:
                 continue
-            optimized_words.append(w)
+            optimized_words.add(w)
         return optimized_words
 
     def optimize_words(self, words):
-        optimized_words = []
+        optimized_words = set()
         for w in words:
             if not len(set(w)) == 5:
                 continue
-            optimized_words.append(w)
+            optimized_words.add(w)
         optimized_words = self.get_repr_sample(optimized_words)
         return optimized_words
 
     def get_repr_sample(self, words):
         size = int(len(words) * 0.5)
-        shuffle(words)
-        return words[:size]
+        return set(itertools.islice(words, size))
 
     def get_first_word(self):
         self.possible_answers = self.answers
@@ -156,37 +153,37 @@ class WordleSolver:
                 second_words.append((word, entropy))
         return second_words
 
-    def input_mode(self):
-        print("Input mode")
-        print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
-        print(
-            "*****************************************************************************"
-        )
-        first_word = self.get_first_word()[0]
-        print(f"Guess 1: {first_word}")
-        color = self.get_user_color()
-        if color == [2, 2, 2, 2, 2]:
-            print(f"{first_word} is the answer!")
-        else:
-            self.possible_answers = self.get_possible_answers(
-                first_word, self.triadic_to_number(color)
-            )
-            next_word = self.load_second_words()[self.triadic_to_number(color)][0]
-            print(f"Guess 2: {next_word}")
-            color = self.get_user_color()
-            self.possible_answers = self.get_possible_answers(
-                next_word, self.triadic_to_number(color)
-            )
-            attempt = 2
-            while attempt <= 5:
-                attempt += 1
-                if len(self.possible_answers) == 1:
-                    attempt += 1
-                    print(f"{self.possible_answers[0]} is the answer!")
-                    break
-                next_word = self.next_word(next_word, color)[0]
-                print(f"Guess {attempt}: {next_word}")
-                color = self.get_user_color()
+    # def input_mode(self):
+    #     print("Input mode")
+    #     print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
+    #     print(
+    #         "*****************************************************************************"
+    #     )
+    #     first_word = self.get_first_word()[0]
+    #     print(f"Guess 1: {first_word}")
+    #     color = self.get_user_color()
+    #     if color == [2, 2, 2, 2, 2]:
+    #         print(f"{first_word} is the answer!")
+    #     else:
+    #         self.possible_answers = self.get_possible_answers(
+    #             first_word, self.triadic_to_number(color)
+    #         )
+    #         next_word = self.load_second_words()[self.triadic_to_number(color)][0]
+    #         print(f"Guess 2: {next_word}")
+    #         color = self.get_user_color()
+    #         self.possible_answers = self.get_possible_answers(
+    #             next_word, self.triadic_to_number(color)
+    #         )
+    #         attempt = 2
+    #         while attempt <= 5:
+    #             attempt += 1
+    #             if len(self.possible_answers) == 1:
+    #                 attempt += 1
+    #                 print(f"{self.possible_answers[0]} is the answer!")
+    #                 break
+    #             next_word = self.next_word(next_word, color)[0]
+    #             print(f"Guess {attempt}: {next_word}")
+    #             color = self.get_user_color()
 
     def check_color_format(self, color):
         if len(color) != 5:
@@ -220,7 +217,7 @@ class WordleSolver:
         eval_num = self.wordle_eval_num(first_word, answer)
         attempt += 1
         if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
-            print(self.possible_answers[0], answer, attempt)
+            print(self.possible_answers, answer, attempt)
             return True
         self.possible_answers = self.get_possible_answers(first_word, eval_num)
         next_word = self.load_second_words()[eval_num][0]
@@ -229,7 +226,7 @@ class WordleSolver:
             attempt += 1
             eval_num = self.wordle_eval_num(next_word, answer)
             if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
-                print(self.possible_answers[0], answer, attempt)
+                print(next_word, answer, attempt)
                 return True
             next_word = self.next_word(next_word, self.number_to_triadic(eval_num))[0]
         print(answer, attempt, self.possible_answers)
@@ -239,6 +236,6 @@ class WordleSolver:
 if __name__ == "__main__":
     ws = WordleSolver()
     start = time.time()
-    ws.test(answer="baker")
+    ws.test(10)
     end = time.time()
     print(f"time: {end - start}")
