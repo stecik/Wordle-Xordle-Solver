@@ -1,7 +1,8 @@
 from math import log2, inf
-import numpy as np
 from random import choice, shuffle
 import time
+import numpy as np
+from collections import defaultdict
 
 
 class WordleSolver:
@@ -20,29 +21,31 @@ class WordleSolver:
 
     def number_to_triadic(self, num, siz=None):
         if siz is None:
-            siz = self.word_length
-        if siz == 0:
-            return []
-        else:
-            return [num % 3] + self.number_to_triadic(num // 3, siz - 1)
+            siz = 5
+        triadic = [0] * siz
+        for i in range(siz):
+            triadic[i] = num % 3
+            num //= 3
+        return triadic
 
     def triadic_to_number(self, tri):
-        if tri == []:
-            return 0
-        else:
-            return 3 * self.triadic_to_number(tri[1:]) + tri[0]
+        result = 0
+        for digit in tri[::-1]:
+            result = result * 3 + digit
+        return result
 
     def wordle_eval_num(self, word, possible_answer):
+        possible_answer_set = set(possible_answer)
         result = [0] * 5
         for i in range(5):
             if word[i] == possible_answer[i]:
                 result[i] = 2
-            elif possible_answer.find(word[i]) >= 0:
+            elif word[i] in possible_answer_set:
                 result[i] = 1
         return self.triadic_to_number(result)
 
     def count_by_word(self, word):
-        result = [0] * (3**5)
+        result = [0] * (self.number_of_colors)
         for possible_answer in self.possible_answers:
             i = self.wordle_eval_num(word, possible_answer)
             result[i] += 1
@@ -56,26 +59,36 @@ class WordleSolver:
     def cond_entropy(self, word):
         return sum(map(self.plog, self.count_by_word(word)))
 
-    def next_word(self, word, color, entropy_value=0):
+    def next_word(self, word, color):
         number = self.triadic_to_number(color)
         possible_answers = self.get_possible_answers(word, number)
         self.possible_answers = possible_answers
         if len(self.possible_answers) == 1:
             return self.possible_answers
-        if entropy_value == 0:
-            result = None
-            min_ent = inf
-            for word in self.optimized_words:
-                cond_e = self.cond_entropy(word)
-                if cond_e < min_ent:
-                    result = (word, cond_e)
-                    min_ent = cond_e
+
+        in_possible_answers = []
+        not_in_possible_answers = []
+        min_ent = inf
+        for word in self.optimized_words:
+            cond_e = self.cond_entropy(word)
+            if cond_e == min_ent:
+                if word in self.possible_answers:
+                    in_possible_answers.append((word, cond_e))
+                else:
+                    not_in_possible_answers.append((word, cond_e))
+            elif cond_e < min_ent:
+                in_possible_answers = []
+                not_in_possible_answers = []
+                min_ent = cond_e
+                if word in self.possible_answers:
+                    in_possible_answers.append((word, cond_e))
+                else:
+                    not_in_possible_answers.append((word, cond_e))
+
+        if in_possible_answers:
+            result = choice(in_possible_answers)
         else:
-            for word in self.optimized_words:
-                cond_e = self.cond_entropy(word)
-                if cond_e < entropy_value:
-                    result = (word, cond_e)
-                    break
+            result = choice(not_in_possible_answers)
         return result
 
     def get_possible_answers(self, word, number):
@@ -88,13 +101,14 @@ class WordleSolver:
     def optimize_words_for_first(self, words):
         optimized_words = []
         for w in words:
-            if not len(set(w)) == 5:
-                continue
-            if "a" not in w:
-                continue
-            if "o" not in w:
+            w_set = set(w)
+            if not len(w_set) == 5:
                 continue
             if "e" != w[-1]:
+                continue
+            if "a" not in w_set:
+                continue
+            if "o" not in w_set:
                 continue
             optimized_words.append(w)
         return optimized_words
@@ -113,22 +127,14 @@ class WordleSolver:
         shuffle(words)
         return words[:size]
 
-    def get_first_word(self, entropy_value=0):
+    def get_first_word(self):
         self.possible_answers = self.answers
-        if entropy_value == 0:
-            result = None
-            min_ent = inf
-            for word in self.optimize_words_for_first(self.all_words):
-                cond_e = self.cond_entropy(word)
-                if cond_e < min_ent:
-                    result = (word, cond_e)
-                    min_ent = cond_e
-        else:
-            for word in self.optimize_words_for_first(self.all_words):
-                cond_e = self.cond_entropy(word)
-                if cond_e < entropy_value:
-                    result = (word, cond_e)
-                    break
+        min_ent = inf
+        for word in self.optimize_words_for_first(self.all_words):
+            cond_e = self.cond_entropy(word)
+            if cond_e < min_ent:
+                result = (word, cond_e)
+                min_ent = cond_e
         self.possible_answers = self.all_words
         return result
 
@@ -232,8 +238,7 @@ class WordleSolver:
 
 if __name__ == "__main__":
     ws = WordleSolver()
-    # ws.input_mode()
     start = time.time()
-    ws.test(100)
+    ws.test(answer="baker")
     end = time.time()
     print(f"time: {end - start}")
