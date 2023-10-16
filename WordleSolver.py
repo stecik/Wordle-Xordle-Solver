@@ -153,37 +153,37 @@ class WordleSolver:
                 second_words.append((word, entropy))
         return second_words
 
-    # def input_mode(self):
-    #     print("Input mode")
-    #     print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
-    #     print(
-    #         "*****************************************************************************"
-    #     )
-    #     first_word = self.get_first_word()[0]
-    #     print(f"Guess 1: {first_word}")
-    #     color = self.get_user_color()
-    #     if color == [2, 2, 2, 2, 2]:
-    #         print(f"{first_word} is the answer!")
-    #     else:
-    #         self.possible_answers = self.get_possible_answers(
-    #             first_word, self.triadic_to_number(color)
-    #         )
-    #         next_word = self.load_second_words()[self.triadic_to_number(color)][0]
-    #         print(f"Guess 2: {next_word}")
-    #         color = self.get_user_color()
-    #         self.possible_answers = self.get_possible_answers(
-    #             next_word, self.triadic_to_number(color)
-    #         )
-    #         attempt = 2
-    #         while attempt <= 5:
-    #             attempt += 1
-    #             if len(self.possible_answers) == 1:
-    #                 attempt += 1
-    #                 print(f"{self.possible_answers[0]} is the answer!")
-    #                 break
-    #             next_word = self.next_word(next_word, color)[0]
-    #             print(f"Guess {attempt}: {next_word}")
-    #             color = self.get_user_color()
+    def input_mode(self):
+        print("Input mode")
+        print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
+        print(
+            "*****************************************************************************"
+        )
+        first_word = self.get_first_word()[0]
+        print(f"Guess 1: {first_word}")
+        color = self.get_user_color()
+        if color == [2, 2, 2, 2, 2]:
+            print(f"{first_word} is the answer!")
+        else:
+            self.possible_answers = self.get_possible_answers(
+                first_word, self.triadic_to_number(color)
+            )
+            next_word = self.load_second_words()[self.triadic_to_number(color)][0]
+            print(f"Guess 2: {next_word}")
+            color = self.get_user_color()
+            self.possible_answers = self.get_possible_answers(
+                next_word, self.triadic_to_number(color)
+            )
+            attempt = 2
+            while attempt <= 5:
+                attempt += 1
+                if len(self.possible_answers) == 1:
+                    attempt += 1
+                    print(f"{self.possible_answers[0]} is the answer!")
+                    break
+                next_word = self.next_word(next_word, color)[0]
+                print(f"Guess {attempt}: {next_word}")
+                color = self.get_user_color()
 
     def check_color_format(self, color):
         if len(color) != 5:
@@ -239,3 +239,5 @@ if __name__ == "__main__":
     ws.test(10)
     end = time.time()
     print(f"time: {end - start}")
+
+    # ws.input_mode()
