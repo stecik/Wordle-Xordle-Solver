@@ -6,10 +6,10 @@ import itertools
 
 class WordleSolver:
     def __init__(self, word_length=5) -> None:
-        self.possible_answers = self._load_words("words.txt")
+        self.possible_answers = self._load_words("wordle_dict.txt")
         self.all_words = self.possible_answers.copy()
         self.optimized_words = self.optimize_words(self.all_words)
-        self.answers = list(self._load_words("answers.txt"))
+        self.answers = list(self._load_words("wordle_answers.txt"))
         self.word_length = word_length
         self.number_of_colors = 3**self.word_length
 
