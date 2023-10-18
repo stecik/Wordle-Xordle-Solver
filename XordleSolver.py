@@ -2,7 +2,7 @@ from WordleSolver import WordleSolver
 from string import ascii_lowercase
 import heapq
 from itertools import combinations
-from copy import deepcopy
+from math import inf
 
 
 class XordleSolver(WordleSolver):
@@ -13,6 +13,7 @@ class XordleSolver(WordleSolver):
         self.optimized_words = self.optimize_words(self.all_words)
         self.answers = self.possible_answers.copy()
         self.disj_tuples = set()
+        self.next_word_heap = [0]
 
         self.letters = set(ascii_lowercase)
         self.known_letters = set()
@@ -20,6 +21,27 @@ class XordleSolver(WordleSolver):
         self.used_words = set()
         self.greens = set()
         self.yellows = set()
+
+    def count_by_word(self, word):
+        result = [0] * (self.number_of_colors)
+        for tpl in self.disj_tuples:
+            merged_eval = self.merge_eval(
+                self.wordle_eval_num(word, tpl[0]), self.wordle_eval_num(word, tpl[1])
+            )
+            i = self.triadic_to_number(merged_eval)
+            result[i] += 1
+        return result
+
+    def merge_eval(self, eval1, eval2):
+        result = []
+        for i in range(self.word_length):
+            if eval1[i] == 2 or eval2[i] == 2:
+                result.append(2)
+            elif eval1[i] == 1 or eval2[i] == 1:
+                result.append(1)
+            else:
+                result.append(0)
+        return result
 
     def check_disjunction(self, word1, word2):
         set1 = set(word1)
@@ -36,16 +58,23 @@ class XordleSolver(WordleSolver):
                     disj_tuples.add((word, word2))
         self.disj_tuples = disj_tuples
 
+    def check_duplicate(self, index, word, color):
+        for i in range(self.word_length):
+            if (word[index] == word[i]) and (color[index] != color[i]):
+                return True
+        return False
+
     def eliminate(self, word, color):
         self.used_words.add(word)
         for i in range(self.word_length):
             possible_answers = set()
             if color[i] == 0:
                 self.unknown_letters.discard(word[i])
-                for w in self.possible_answers:
-                    if word[i] not in set(w):
-                        possible_answers.add(w)
-                self.possible_answers = possible_answers
+                if not self.check_duplicate(i, word, color):
+                    for w in self.possible_answers:
+                        if word[i] not in set(w):
+                            possible_answers.add(w)
+                    self.possible_answers = possible_answers
             elif color[i] == 1:
                 self.unknown_letters.discard(word[i])
                 self.known_letters.add(word[i])
@@ -77,18 +106,14 @@ class XordleSolver(WordleSolver):
                             else:
                                 counter += 1
             heapq.heappush(heap, (counter, word))
-        result = heapq.heappop(heap)
-        return result
+        self.next_word_heap = heap
 
-    # def get_letter_freq(self):
-    #     freq_table = {}
-    #     for word in self.all_words:
-    #         for letter in word:
-    #             if letter in freq_table.keys():
-    #                 freq_table[letter] += 1
-    #             else:
-    #                 freq_table[letter] = 1
-    #     return sorted(freq_table.items(), key=lambda x: x[1])
+    def find_next_word2(self):
+        heap = []
+        for word in self.possible_answers:
+            cond_e = self.cond_entropy(word)
+            heapq.heappush(heap, (cond_e, word))
+        self.next_word_heap = heap
 
     def remove_multiple_letters(self):
         new_disj_tuples = set()
@@ -107,17 +132,6 @@ class XordleSolver(WordleSolver):
                     possible_answers.add(tpl[1])
         self.disj_tuples = new_disj_tuples
         self.possible_answers = possible_answers
-
-    # def remove_by_green(self):
-    #     old_disj_tuples = self.disj_tuples.copy()
-    #     for green in self.greens:
-    #         new_disj_tuples = set()
-    #         for tpl in self.disj_tuples:
-    #             if tpl[0][green[1]] == green[0]:
-    #                 new_disj_tuples.add(tpl)
-    #         if len(old_disj_tuples) > len(new_disj_tuples):
-    #             old_disj_tuples = new_disj_tuples
-    #     self.disj_tuples = old_disj_tuples
 
     def remove_by_green(self):
         if self.greens:
@@ -177,6 +191,12 @@ class XordleSolver(WordleSolver):
         self.remove_multiple_letters()
         self.remove_by_green()
 
+    def get_next_word(self):
+        next_word = heapq.heappop(self.next_word_heap)[1]
+        while next_word in self.used_words:
+            next_word = heapq.heappop(self.next_word_heap)[1]
+        return next_word
+
     def input_mode(self):
         print("Input mode")
         print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
@@ -188,25 +208,34 @@ class XordleSolver(WordleSolver):
         self.eliminate(initial_word, self.get_user_color())
         self.eliminate_disj_tuples()
         attempt = 0
-        while attempt < 6:
+        while attempt < 2:
+            if self.check_win():
+                return True
             attempt += 1
-            next_word = self.find_next_word()[1]
+            self.find_next_word()
+            next_word = self.get_next_word()
             print(f"Next word: {next_word}")
             self.eliminate(next_word, self.get_user_color())
             self.eliminate_disj_tuples()
-            if len(self.possible_answers) <= 10:
-                print(self.possible_answers)
-        self.eliminate_disj_tuples()
-        if len(self.disj_tuples) == 1:
-            print(f"Answers are: {self.disj_tuples}")
-        elif len(self.disj_tuples) == 0:
+        while attempt < 7:
+            if self.check_win():
+                return True
+            self.find_disj_tuples()
+            attempt += 1
+            self.find_next_word2()
+            next_word = self.get_next_word()
+            print(f"Next word: {next_word}")
+            self.eliminate(next_word, self.get_user_color())
+            self.eliminate_disj_tuples()
+        print(f"You lose! Possible answers are: {self.disj_tuples}")
+
+    def check_win(self):
+        if len(self.possible_answers) == 1 or not self.next_word_heap:
+            print("You win!")
+            return True
+        elif len(self.possible_answers) == 0:
             print("No answers found, check your color inputs")
-        else:
-            next_word = self.get_most_frequent()
-            print(f"Next word: {next_word}")
-            self.eliminate(next_word, self.get_user_color())
-            self.eliminate_disj_tuples()
-            print(f"Answers are: {self.disj_tuples}")
+            return False
 
 
 if __name__ == "__main__":

@@ -41,12 +41,12 @@ class WordleSolver:
                 result[i] = 2
             elif word[i] in possible_answer_set:
                 result[i] = 1
-        return self.triadic_to_number(result)
+        return result
 
     def count_by_word(self, word):
         result = [0] * (self.number_of_colors)
         for possible_answer in self.possible_answers:
-            i = self.wordle_eval_num(word, possible_answer)
+            i = self.triadic_to_number(self.wordle_eval_num(word, possible_answer))
             result[i] += 1
         return result
 
@@ -92,7 +92,10 @@ class WordleSolver:
     def get_possible_answers(self, word, number):
         possible_answers = set()
         for possible_answer in self.possible_answers:
-            if self.wordle_eval_num(word, possible_answer) == number:
+            if (
+                self.triadic_to_number(self.wordle_eval_num(word, possible_answer))
+                == number
+            ):
                 possible_answers.add(possible_answer)
         return possible_answers
 
@@ -214,7 +217,7 @@ class WordleSolver:
         print("answer: ", answer)
         first_word = self.get_first_word()[0]
         print(first_word)
-        eval_num = self.wordle_eval_num(first_word, answer)
+        eval_num = self.triadic_to_number(self.wordle_eval_num(first_word, answer))
         attempt += 1
         if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
             print(self.possible_answers, answer, attempt)
@@ -224,7 +227,7 @@ class WordleSolver:
         while attempt < 7:
             print(next_word)
             attempt += 1
-            eval_num = self.wordle_eval_num(next_word, answer)
+            eval_num = self.triadic_to_number(self.wordle_eval_num(next_word, answer))
             if eval_num == self.triadic_to_number([2, 2, 2, 2, 2]):
                 print(next_word, answer, attempt)
                 return True
