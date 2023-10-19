@@ -1,20 +1,24 @@
 from WordleSolver import WordleSolver
 from string import ascii_lowercase
 import heapq
-from itertools import combinations
+from itertools import combinations, islice
 from math import inf
+import time
 
 
 class XordleSolver(WordleSolver):
     def __init__(self, word_length=5) -> None:
         super().__init__(word_length)
+        # dictionaries
         self.possible_answers = self._load_words("xordle_dict.txt")
-        self.all_words = self._load_words("xordle_dict.txt")
+        self.all_words = self.possible_answers.copy()
         self.optimized_words = self.get_repr_sample(self.optimize_words(self.all_words))
         self.answers = self.possible_answers.copy()
         self.disj_tuples = set()
-        self.next_word_heap = [0]
+        self.next_word_heap = []
+        self.bitmasks = dict()
 
+        # letters
         self.letters = set(ascii_lowercase)
         self.known_letters = set()
         self.unknown_letters = set(ascii_lowercase)
@@ -33,30 +37,25 @@ class XordleSolver(WordleSolver):
         return result
 
     def merge_eval(self, eval1, eval2):
-        result = []
-        for i in range(self.word_length):
-            if eval1[i] == 2 or eval2[i] == 2:
-                result.append(2)
-            elif eval1[i] == 1 or eval2[i] == 1:
-                result.append(1)
-            else:
-                result.append(0)
-        return result
+        return [max(eval1[i], eval2[i]) for i in range(self.word_length)]
 
-    def check_disjunction(self, word1, word2):
-        set1 = set(word1)
-        set2 = set(word2)
-        if set1.intersection(set2):
-            return False
-        return True
+    def word_to_bitmask(self, word):
+        mask = 0
+        for char in word:
+            mask |= 1 << (ord(char) - ord("a"))
+        return mask
 
     def find_disj_tuples(self):
-        disj_tuples = set()
-        for word in self.possible_answers:
-            for word2 in self.possible_answers:
-                if self.check_disjunction(word, word2):
-                    disj_tuples.add((word, word2))
-        self.disj_tuples = disj_tuples
+        if not self.bitmasks:
+            self.bitmasks = {
+                word: self.word_to_bitmask(word) for word in self.possible_answers
+            }
+        disjunct_tuples = set()
+        for w1 in self.possible_answers:
+            for w2 in self.possible_answers:
+                if self.bitmasks[w1] & self.bitmasks[w2] == 0:
+                    disjunct_tuples.add((w1, w2))
+        self.disj_tuples = disjunct_tuples
 
     def check_duplicate(self, index, word, color):
         for i in range(self.word_length):
@@ -66,25 +65,23 @@ class XordleSolver(WordleSolver):
 
     def eliminate(self, word, color):
         self.used_words.add(word)
+        self.unknown_letters -= set(word)
         for i in range(self.word_length):
             possible_answers = set()
             if color[i] == 0:
-                self.unknown_letters.discard(word[i])
                 if not self.check_duplicate(i, word, color):
                     for w in self.possible_answers:
                         if word[i] not in set(w):
                             possible_answers.add(w)
                     self.possible_answers = possible_answers
             elif color[i] == 1:
-                self.unknown_letters.discard(word[i])
                 self.known_letters.add(word[i])
                 self.yellows.add((word[i], i))
                 for w in self.possible_answers:
                     if word[i] != w[i]:
                         possible_answers.add(w)
                 self.possible_answers = possible_answers
-            elif color[i] == 2:
-                self.unknown_letters.discard(word[i])
+            else:
                 self.known_letters.add(word[i])
                 self.greens.add((word[i], i))
 
@@ -145,6 +142,11 @@ class XordleSolver(WordleSolver):
                     ) and self.validate_word_for_green(tpl[1], s2):
                         result.add(tpl[0])
                         result.add(tpl[1])
+                    elif self.validate_word_for_green(
+                        tpl[0], s2
+                    ) and self.validate_word_for_green(tpl[1], s1):
+                        result.add(tpl[0])
+                        result.add(tpl[1])
             self.possible_answers = result
 
     def validate_word_for_green(self, word, s):
@@ -200,7 +202,7 @@ class XordleSolver(WordleSolver):
             next_word = heapq.heappop(self.next_word_heap)[1]
         return next_word
 
-    def input_mode(self, method_acc=200, disj_acc=3000):
+    def input_mode(self, disj_acc=6000):
         print("Input mode")
         print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
         print(
@@ -222,7 +224,8 @@ class XordleSolver(WordleSolver):
                 return True
             attempt += 1
             print(len(self.possible_answers))
-            if len(self.possible_answers) >= method_acc:
+            print(len(self.disj_tuples))
+            if len(self.disj_tuples) >= disj_acc and len(self.disj_tuples):
                 self.find_next_word()
             else:
                 self.find_next_word2()
