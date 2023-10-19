@@ -8,9 +8,9 @@ from math import inf
 class XordleSolver(WordleSolver):
     def __init__(self, word_length=5) -> None:
         super().__init__(word_length)
-        self.possible_answers = self._load_words("xordle_answers.txt")
+        self.possible_answers = self._load_words("xordle_dict.txt")
         self.all_words = self._load_words("xordle_dict.txt")
-        self.optimized_words = self.optimize_words(self.all_words)
+        self.optimized_words = self.get_repr_sample(self.optimize_words(self.all_words))
         self.answers = self.possible_answers.copy()
         self.disj_tuples = set()
         self.next_word_heap = [0]
@@ -187,17 +187,20 @@ class XordleSolver(WordleSolver):
         return sorted(freq_table.items(), key=lambda x: x[1])[-1][0]
 
     def eliminate_disj_tuples(self):
-        self.find_disj_tuples()
-        self.remove_multiple_letters()
-        self.remove_by_green()
+        if self.greens or len(self.known_letters) >= 5:
+            self.find_disj_tuples()
+            self.remove_multiple_letters()
+            self.remove_by_green()
 
     def get_next_word(self):
-        next_word = heapq.heappop(self.next_word_heap)[1]
-        while next_word in self.used_words:
+        next_word = None
+        if self.next_word_heap:
+            next_word = heapq.heappop(self.next_word_heap)[1]
+        while next_word in self.used_words and self.next_word_heap:
             next_word = heapq.heappop(self.next_word_heap)[1]
         return next_word
 
-    def input_mode(self):
+    def input_mode(self, method_acc=200, disj_acc=3000):
         print("Input mode")
         print("Enter 2 for green letter, 1 for yellow letter, 0 for grey letter")
         print(
@@ -205,32 +208,41 @@ class XordleSolver(WordleSolver):
         )
         initial_word = input("Enter revealed word: ").lower().strip()
         self.used_words.add(initial_word)
-        self.eliminate(initial_word, self.get_user_color())
-        self.eliminate_disj_tuples()
+        guessed = 0
+        color = self.get_user_color()
+        self.eliminate(initial_word, color)
+        if color == [2, 2, 2, 2, 2]:
+            guessed += 1
+        if len(self.possible_answers) <= disj_acc:
+            self.eliminate_disj_tuples()
         attempt = 0
-        while attempt < 2:
-            if self.check_win():
-                return True
-            attempt += 1
-            self.find_next_word()
-            next_word = self.get_next_word()
-            print(f"Next word: {next_word}")
-            self.eliminate(next_word, self.get_user_color())
-            self.eliminate_disj_tuples()
-        while attempt < 7:
-            if self.check_win():
-                return True
-            self.find_disj_tuples()
-            attempt += 1
-            self.find_next_word2()
-            next_word = self.get_next_word()
-            print(f"Next word: {next_word}")
-            self.eliminate(next_word, self.get_user_color())
-            self.eliminate_disj_tuples()
-        print(f"You lose! Possible answers are: {self.disj_tuples}")
 
-    def check_win(self):
-        if len(self.possible_answers) == 1 or not self.next_word_heap:
+        while attempt < 8:
+            if self.check_win():
+                return True
+            attempt += 1
+            print(len(self.possible_answers))
+            if len(self.possible_answers) >= method_acc:
+                self.find_next_word()
+            else:
+                self.find_next_word2()
+            next_word = self.get_next_word()
+            print(f"Next word: {next_word}")
+            color = self.get_user_color()
+            if color == [2, 2, 2, 2, 2]:
+                guessed += 1
+                if self.check_win(guessed):
+                    return True
+            self.eliminate(next_word, color)
+            if len(self.possible_answers) <= disj_acc:
+                self.eliminate_disj_tuples()
+        if self.check_win():
+            return True
+        print(f"You lose! Possible answers are: {self.disj_tuples}")
+        return False
+
+    def check_win(self, guessed=0):
+        if guessed == 2:
             print("You win!")
             return True
         elif len(self.possible_answers) == 0:
