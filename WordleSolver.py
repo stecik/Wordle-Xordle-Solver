@@ -167,26 +167,28 @@ class WordleSolver:
         color = self.get_user_color()
         if color == [2, 2, 2, 2, 2]:
             print(f"{first_word} is the answer!")
-        else:
-            self.possible_answers = self.get_possible_answers(
-                first_word, self.triadic_to_number(color)
-            )
-            next_word = self.load_second_words()[self.triadic_to_number(color)][0]
-            print(f"Guess 2: {next_word}")
+            return True
+        self.possible_answers = self.get_possible_answers(
+            first_word, self.triadic_to_number(color)
+        )
+        next_word = self.load_second_words()[self.triadic_to_number(color)][0]
+        print(f"Guess 2: {next_word}")
+        color = self.get_user_color()
+        if color == [2, 2, 2, 2, 2]:
+            print(f"{next_word} is the answer!")
+            return True
+        self.possible_answers = self.get_possible_answers(
+            next_word, self.triadic_to_number(color)
+        )
+        attempt = 2
+        while attempt <= 5:
+            attempt += 1
+            next_word = self.next_word(next_word, color)[0]
+            print(f"Guess {attempt}: {next_word}")
             color = self.get_user_color()
-            self.possible_answers = self.get_possible_answers(
-                next_word, self.triadic_to_number(color)
-            )
-            attempt = 2
-            while attempt <= 5:
-                attempt += 1
-                if len(self.possible_answers) == 1:
-                    attempt += 1
-                    print(f"{self.possible_answers[0]} is the answer!")
-                    break
-                next_word = self.next_word(next_word, color)[0]
-                print(f"Guess {attempt}: {next_word}")
-                color = self.get_user_color()
+            if color == [2, 2, 2, 2, 2]:
+                print(f"{next_word} is the answer!")
+                return True
 
     def check_color_format(self, color):
         if len(color) != 5:
@@ -238,9 +240,8 @@ class WordleSolver:
 
 if __name__ == "__main__":
     ws = WordleSolver()
-    start = time.time()
-    ws.test(10)
-    end = time.time()
-    print(f"time: {end - start}")
-
-    # ws.input_mode()
+    # start = time.time()
+    # ws.test(10)
+    # end = time.time()
+    # print(f"time: {end - start}")
+    ws.input_mode()
