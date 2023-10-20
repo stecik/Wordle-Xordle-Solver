@@ -213,32 +213,36 @@ class XordleSolver(WordleSolver):
         guessed = 0
         color = self.get_user_color()
         self.eliminate(initial_word, color)
-        if color == [2, 2, 2, 2, 2]:
+        if color == [2, 2, 2, 2, 2] and not self.check_huh():
             guessed += 1
         if len(self.possible_answers) <= disj_acc:
             self.eliminate_disj_tuples()
         attempt = 0
-
-        while attempt < 8:
+        n = 8
+        while attempt < n:
             if self.check_win():
                 return True
             attempt += 1
             print(len(self.possible_answers))
             print(len(self.disj_tuples))
-            if len(self.disj_tuples) >= disj_acc and len(self.disj_tuples):
-                self.find_next_word()
-            else:
+            if len(self.disj_tuples) <= disj_acc and len(self.disj_tuples):
                 self.find_next_word2()
+            else:
+                self.find_next_word()
             next_word = self.get_next_word()
             print(f"Next word: {next_word}")
             color = self.get_user_color()
             if color == [2, 2, 2, 2, 2]:
-                guessed += 1
-                if self.check_win(guessed):
-                    return True
+                huh = self.check_huh()
+                if not huh:
+                    guessed += 1
+                    if self.check_win(guessed):
+                        return True
             self.eliminate(next_word, color)
             if len(self.possible_answers) <= disj_acc:
                 self.eliminate_disj_tuples()
+            if color == [2, 2, 2, 2, 2] and not huh and guessed == 1 and attempt == 8:
+                n = 9
         if self.check_win():
             return True
         print(f"You lose! Possible answers are: {self.disj_tuples}")
@@ -251,6 +255,12 @@ class XordleSolver(WordleSolver):
         elif len(self.possible_answers) == 0:
             print("No answers found, check your color inputs")
             return False
+
+    def check_huh(self):
+        huh = input("Huh? Did huh? appear next to your answer? (y/n): ")
+        if huh == "y":
+            return True
+        return False
 
 
 if __name__ == "__main__":
