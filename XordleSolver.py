@@ -134,6 +134,7 @@ class XordleSolver(WordleSolver):
         if self.greens:
             comb = self.find_all_combinations()
             result = set()
+            new_disj_tuples = set()
             for c in comb:
                 s1, s2 = c[0], c[1]
                 for tpl in self.disj_tuples:
@@ -142,12 +143,15 @@ class XordleSolver(WordleSolver):
                     ) and self.validate_word_for_green(tpl[1], s2):
                         result.add(tpl[0])
                         result.add(tpl[1])
+                        new_disj_tuples.add(tpl)
                     elif self.validate_word_for_green(
                         tpl[0], s2
                     ) and self.validate_word_for_green(tpl[1], s1):
                         result.add(tpl[0])
                         result.add(tpl[1])
+                        new_disj_tuples.add(tpl)
             self.possible_answers = result
+            self.disj_tuples = new_disj_tuples
 
     def validate_word_for_green(self, word, s):
         for tpl in s:
@@ -235,9 +239,12 @@ class XordleSolver(WordleSolver):
             if color == [2, 2, 2, 2, 2]:
                 huh = self.check_huh()
                 if not huh:
+                    self.remove_correct_guess(next_word)
                     guessed += 1
                     if self.check_win(guessed):
                         return True
+                else:
+                    self.remove_huh(next_word)
             self.eliminate(next_word, color)
             if len(self.possible_answers) <= disj_acc:
                 self.eliminate_disj_tuples()
@@ -261,6 +268,32 @@ class XordleSolver(WordleSolver):
         if huh == "y":
             return True
         return False
+
+    def remove_correct_guess(self, word):
+        if self.disj_tuples:
+            possible_answers = set()
+            new_disj_tuples = set()
+            for tpl in self.disj_tuples:
+                if tpl[0] == word or tpl[1] == word:
+                    possible_answers.add(tpl[0])
+                    possible_answers.add(tpl[1])
+                    new_disj_tuples.add(tpl)
+            self.possible_answers = possible_answers
+            self.disj_tuples = new_disj_tuples
+
+    def remove_huh(self, word):
+        if self.disj_tuples:
+            possible_answers = set()
+            new_disj_tuples = set()
+            for tpl in self.disj_tuples:
+                if tpl[0] == word or tpl[1] == word:
+                    continue
+                else:
+                    possible_answers.add(tpl[0])
+                    possible_answers.add(tpl[1])
+                    new_disj_tuples.add(tpl)
+            self.possible_answers = possible_answers
+            self.disj_tuples = new_disj_tuples
 
 
 if __name__ == "__main__":
