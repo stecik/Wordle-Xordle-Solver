@@ -54,7 +54,12 @@ class XordleSolver(WordleSolver):
         for w1 in self.possible_answers:
             for w2 in self.possible_answers:
                 if self.bitmasks[w1] & self.bitmasks[w2] == 0:
-                    disjunct_tuples.add((w1, w2))
+                    if w1[0] < w2[0]:
+                        disj_tuple = (w1, w2)
+                    else:
+                        disj_tuple = (w2, w1)
+                    if disj_tuple not in disjunct_tuples:
+                        disjunct_tuples.add(disj_tuple)
         self.disj_tuples = disjunct_tuples
 
     def check_duplicate(self, index, word, color):
@@ -227,8 +232,8 @@ class XordleSolver(WordleSolver):
             if self.check_win():
                 return True
             attempt += 1
-            print(len(self.possible_answers))
-            print(len(self.disj_tuples))
+            print("Possible answers: ", len(self.possible_answers))
+            print("Disjunct tuples: ", len(self.disj_tuples))
             if len(self.disj_tuples) <= disj_acc and len(self.disj_tuples):
                 self.find_next_word2()
             else:
